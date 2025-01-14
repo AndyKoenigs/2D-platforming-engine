@@ -1,0 +1,301 @@
+arch snes.cpu
+macro seek(n) {
+origin ({n} & 0x1fffff)
+base {n}
+}
+
+seek($a08000)
+
+include "defines.txt"
+
+macro rgb(r,g,b) {
+dw ((({b} << 5) + {g} << 5) + {r})
+}
+
+reset:
+jml fast_bank
+fast_bank:
+clc
+xce //set native mode
+rep #$30 //16-bit accumulator and index
+lda #$2100
+tcd           		//set up direct page to $0000
+ldx #$01ff
+txs //set up stack pointer to $01ff
+sep #$10		//8-bit accumulator and index
+ldx #$a0
+phx
+plb			//set data bank to $80xxxx
+lda #$028F    // screen off, full brightness
+sta $00   // brightness + screen enable register
+stz $02   // Sprite registers (address of sprite memory [OAM])
+ldx #$39
+stx $05   // Mode 1, = Graphic mode register (Plane 2 high priority)
+lda #$6000
+sta $06   // no mosaic, BG1 tilemap at $6000
+lda #$6a64
+sta $08   // BG2 tilemap at $6800, BG3 tilemap at $7000
+lda #$0068
+sta $0A   // BG4 tilemap at $7800, BG1 tileset at $0000, BG2 tileset at $2000
+lda #$0077
+sta $0C   // BG3 tileset at $3000
+ldx #$00
+-;
+stz $0d,x
+inx
+cpx #$07
+bne -
+lda #$8000
+sta $14   // Plane 3 scroll y (last 3 bits)
+stz $16   // VRAM address low
+stz $1A   // Initial Mode 7 setting register
+lda #$0001
+sta $1B   // Mode 7 matrix parameter A register (high)
+stz $1C   // Mode 7 matrix parameter B register (high)
+stz $1D   // Mode 7 matrix parameter C register (high)
+sta $1E   // Mode 7 matrix parameter D register (high)
+stz $1F   // Mode 7 center position X register (high)
+stz $20   // Mode 7 center position Y register (high)
+ldx #$00
+stx $21
+-;
+stz $23,x
+inx #2
+cpx #$10
+bne -
+ldx #$1f
+stx $2c   // OBJ, Color Window Logic Register (or,and,xor,xnor)
+ldx #$30
+stx $30   // Window mask for Sub Screen
+lda #$00e0
+sta $32   // Add/Sub sub designation for screen, sprite, color	
+stz $81		//set WRAM address to $000000
+ldx #$00
+stx $83
+lda #$4200
+tcd
+lda #$ff00
+sta $00   // Enable V-blank, interrupt, Joypad register
+ldx #$0c
+-;
+stz $00,x
+dex #2
+bne -
+
+ldx #$01
+stx $0d	// Access cycle designation (slow/fast rom)
+cli 	 	// Enable interrupts
+
+	
+dma_default_graphics:
+
+lda #$4300
+tcd
+lda #$1801
+sta $00		//dma to vram, 16-bit mode
+stz $02		//Set source address to $c20000
+ldx #$c2
+stx $04		//Set source bank to $c2
+stz $05		//Set transfer size to 64k bytes
+ldy #$01
+sty $420b	//Initiate transfer
+
+dma_default_palette:
+php
+rep #$10
+ldx #color_palette
+jsr load_palette
+plp
+
+
+clear_wram:
+
+lda #$8008
+sta $00         //Set DMA mode to fixed source, BYTE to $2180
+lda #wram_fill_byte
+sta $02         //Set source offset
+ldx #$80
+stx $04
+stz $05
+ldy #$01
+sty $420B         //Initiate transfer
+sty $2183
+sty $420B         //Initiate transfer
+
+
+rep #$30
+lda #$2100
+tcd
+lda #$bbaa
+-;
+cmp $40
+bne -
+lda #$0200
+sta $42
+lda #$01cc
+sta $40
+sep #$20
+lda #$cc
+-;
+cmp $40
+bne -
+ldy #$fe00
+ldx #$0000
+-;
+lda $c30200,x
+sta $41
+txa
+sta $40
+-;
+cmp $40
+bne -
+inx
+dey
+bne --
+stz $41
+txa
+inc #2
+sta $40
+-;
+cmp $40
+bne -
+
+pea $0000
+pld			//set up direct page to $0000
+
+phb			//clear cartridge SRAM
+lda #$a0
+-;
+pha
+plb
+ldx #$1ffe
+rep #$20
+-;
+stz $6000,x
+dex #2
+bpl -
+sep #$20
+inc
+cmp #$b0
+bne --
+plb
+
+lda #$81
+sta $4200		//setting up nmi	
+
+lda #$01
+sta {frame_done}
+
+infinite_loop:
+wai
+jmp infinite_loop
+
+
+nmi:
+jml fast_nmi_bank
+fast_nmi_bank:
+rep #$fb		//16-bit accumulator and index
+pha
+phb
+phd
+phx
+phy
+sep #$10		//8-bit index
+phk
+plb			//set data bank to $80xxxx
+ldx $4210
+cli
+
+lda #$0000
+tcd
+
+lda {frame_done}
+beq unfinished_frame
+stz {frame_done}
+
+jsr vblank
+
+sep #$20
+
+wait_for_joypad:
+
+lda $4212
+and #$01
+bne wait_for_joypad		//wait for joypad
+
+
+rep #$20
+lda $4218
+eor {joypad1}
+and $4218
+sta {trigger1}
+lda $4218
+sta {joypad1}
+
+lda $421a
+eor {joypad2}
+and $421a
+sta {trigger2}
+lda $421a
+sta {joypad2}
+
+jsr main
+
+sep #$20
+lda #$01
+sta {frame_done}
+
+unfinished_frame:
+rep #$30
+ply
+plx
+pld
+plb
+pla
+rti
+
+
+load_palette:
+phy
+sep #$20
+stz $2121
+ldy #$2200
+sty $4300
+stx $4302
+lda #$c1
+sta $4304
+ldy #$0200
+sty $4305
+lda #$01
+sta $420b
+ply
+rts
+
+
+wram_fill_byte:
+db $00
+
+
+include "main.txt"
+include "vblank.txt"
+
+
+seek($a0ffd5)
+db $31,$01,$0a,$07,$00
+seek($a0ffe0)
+dw 0,0,0,0,0,nmi,reset,nmi
+dw 0,0,0,0,0,nmi,reset,nmi
+
+
+seek($c10000)
+include "color palette.txt"
+include "collision map.txt"
+
+seek($c30200)
+arch snes.smp
+
+
+include "spc700.txt"
+
+seek($cf0000)
+include "sine multiplication table.txt"

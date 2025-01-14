@@ -1,0 +1,139 @@
+macro build_hioam(x,y) {
+lda.b $0d+{x}
+asl #2
+ora.b $09+{x}
+asl #2
+ora.b $05+{x}
+asl #2
+ora.b $01+{x}
+sta.w {hioam}+{y}
+}
+
+build_hioam:
+rep #$31
+
+lda {sprite_number}
+dec
+and #$0100
+adc #{oam}+$0200
+tcd
+
+lda.w {sprite_number}
+lsr #2
+clc
+adc #$0003
+lsr
+and #$fffe
+tax
+
+
+sep #$20
+jmp (hioam_jump_table,x)
+
+hioam_32:
+build_hioam($f0,$001f)
+hioam_31:
+build_hioam($e0,$001e)
+hioam_30:
+build_hioam($d0,$001d)
+hioam_29:
+build_hioam($c0,$001c)
+hioam_28:
+build_hioam($b0,$001b)
+hioam_27:
+build_hioam($a0,$001a)
+hioam_26:
+build_hioam($90,$0019)
+hioam_25:
+build_hioam($80,$0018)
+hioam_24:
+build_hioam($70,$0017)
+hioam_23:
+build_hioam($60,$0016)
+hioam_22:
+build_hioam($50,$0015)
+hioam_21:
+build_hioam($40,$0014)
+hioam_20:
+build_hioam($30,$0013)
+hioam_19:
+build_hioam($20,$0012)
+hioam_18:
+build_hioam($10,$0011)
+hioam_17:
+build_hioam($00,$0010)
+pea {oam}+$0200
+pld
+hioam_16:
+build_hioam($f0,$000f)
+hioam_15:
+build_hioam($e0,$000e)
+hioam_14:
+build_hioam($d0,$000d)
+hioam_13:
+build_hioam($c0,$000c)
+hioam_12:
+build_hioam($b0,$000b)
+hioam_11:
+build_hioam($a0,$000a)
+hioam_10:
+build_hioam($90,$0009)
+hioam_9:
+build_hioam($80,$0008)
+hioam_8:
+build_hioam($70,$0007)
+hioam_7:
+build_hioam($60,$0006)
+hioam_6:
+build_hioam($50,$0005)
+hioam_5:
+build_hioam($40,$0004)
+hioam_4:
+build_hioam($30,$0003)
+hioam_3:
+build_hioam($20,$0002)
+hioam_2:
+build_hioam($10,$0001)
+hioam_1:
+build_hioam($00,$0000)
+hioam_0:
+
+rep #$20
+lda #$0000
+tcd
+rts
+
+hioam_jump_table:
+dw hioam_0
+dw hioam_1
+dw hioam_2
+dw hioam_3
+dw hioam_4
+dw hioam_5
+dw hioam_6
+dw hioam_7
+dw hioam_8
+dw hioam_9
+dw hioam_10
+dw hioam_11
+dw hioam_12
+dw hioam_13
+dw hioam_14
+dw hioam_15
+dw hioam_16
+dw hioam_17
+dw hioam_18
+dw hioam_19
+dw hioam_20
+dw hioam_21
+dw hioam_22
+dw hioam_23
+dw hioam_24
+dw hioam_25
+dw hioam_26
+dw hioam_27
+dw hioam_28
+dw hioam_29
+dw hioam_30
+dw hioam_31
+dw hioam_32

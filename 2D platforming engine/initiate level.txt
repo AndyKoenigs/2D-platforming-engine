@@ -1,0 +1,74 @@
+define level_width($0020)
+define level_height($0020)
+
+initiate_level:
+sep #$20
+lda #$80
+sta $2100
+sta $2115
+rep #$20
+lda #$6000
+sta {temp3}
+sta $2116
+lda.w #{level_map}
+sta {temp}
+lda.w #({level_map} >> 16)
+sta {temp2}
+ldx #$0000
+txy
+-;
+lda collision_map,x
+sta [{temp}],y
+phy
+and #$00ff
+asl
+tay
+lda tile_attributes,y
+sta $2118
+lda collision_map+1,x
+and #$00ff
+asl
+tay
+lda tile_attributes,y
+sta $2118
+ply
+inx #2
+iny #2
+cpy #{level_width}
+bne -
+lda {temp3}
+clc
+adc #$0020
+sta {temp3}
+sta $2116
+ldy #$0000
+inc.b {temp}+1
+cpx #({level_height} * {level_width})
+bne -
+sep #$20
+lda #$0f
+sta $2100
+rep #$20
+lda.w #{level_map}
+sta {temp}
+lda.w #({level_map} >> 16)
+sta {temp2}
+ldx #$0000
+-;
+txa
+sep #$20
+lsr #2
+tay
+lda [{temp}],y
+rep #$20
+and #$00ff
+asl
+tay
+lda collision_data,y
+sta {collision_map},x
+lda slope_data,y
+sta {slope_map},x
+inx #4
+cpx #$4000
+bne -
+rts

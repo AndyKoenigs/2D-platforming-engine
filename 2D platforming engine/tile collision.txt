@@ -1,0 +1,419 @@
+include "collision data.txt"
+
+macro get_tile_info(x,y) {
+lda {y}
+sep #$20
+lda.b {x}+1
+asl #2
+rep #$20
+tax
+lda {collision_map},x
+}
+
+tile_collision:
+lda {y_pos},x
+sta {copy_y}
+lda {x_pos},x
+sta {copy_x}
+
+lda {collision},x
+bit #$0031
+beq +
+lda {collision_type}
+cmp #$0001
+bne +
+lda {copy_y}
+clc
+adc #$0080
+sta {copy_y}
++;
+
+lda {collision},x
+bit #$00c2
+beq +
+lda {collision_type}
+cmp #$0002
+bne +
+lda {copy_y}
+sec
+sbc #$0080
+sta {copy_y}
++;
+
+txy
+stz {collision_flags}
+jsr vertical_collision
+jsr horizontal_collision
+tyx
+lda {collision_flags}
+sta {collision},x
+beq +
+lda {copy_x}
+sta {x_pos},x
+lda {copy_y}
+sta {y_pos},x
++;
+rts
+
+/////////////////////////////////////////////////
+
+vertical_collision:
+lda {width}
+lsr
+clc
+adc {prev_x}
+sta {prev_center_x}
+lda {prev_x}
+sta {temp_x}
+clc
+adc {width}
+sta {prev_right_x}
+lda {prev_y}
+cmp {copy_y}
+bcc +
+eor {copy_y}
+and #$ff00
+beq +
+
+get_tile_info({prev_center_x},{copy_y})
+and #$0002
+bne +
+jsr ceiling_collision_left
+lda {prev_right_x}
+sta {temp_x}
+jsr ceiling_collision_right
++;
+lda {copy_y}
+clc
+adc {height}
+sta {bottom_y}
+lda {prev_y}
+clc
+adc {height}
+sta {prev_bottom_y}
+cmp {bottom_y}
+bcs +
+eor {bottom_y}
+and #$ff00
+beq +
+
+get_tile_info({prev_center_x},{bottom_y})
+and #$0001
+bne +
+lda {prev_x}
+sta {temp_x}
+jsr floor_collision_left
+lda {prev_right_x}
+sta {temp_x}
+jsr floor_collision_right
++;
+lda {bottom_y}
+sec
+sbc {height}
+sta {copy_y}
+rts
+
+macro floor_collision(bits) {
+get_tile_info({temp_x},{bottom_y})
+and {bits}
+beq +
+tsb {collision_flags}
+lda {bottom_y}
+and #$ff00
+dec
+sta {bottom_y}
++;
+rts
+}
+
+floor_collision_left:
+floor_collision(#$0010)
+
+floor_collision_right:
+floor_collision(#$0020)
+
+macro ceiling_collision(bits) {
+get_tile_info({temp_x},{copy_y})
+and {bits}
+beq +
+tsb {collision_flags}
+lda {copy_y}
+ora #$00ff
+inc
+sta {copy_y}
++;
+rts
+}
+
+ceiling_collision_left:
+ceiling_collision(#$0040)
+
+ceiling_collision_right:
+ceiling_collision(#$0080)
+
+//////////////////////////////////////////////////////////////////////
+
+horizontal_collision:
+lda {copy_x}
+clc
+adc {width}
+sta {right_x}
+lda {width}
+lsr
+clc
+adc {copy_x}
+and #$fff0
+sta {center_x}
+lda {width}
+lsr
+clc
+adc {prev_x}
+and #$fff0
+cmp {center_x}
+bcs left_collision
+right_collision:
+-;
+sta {temp_x}
+jsr ceiling_slope_collision
+lda {temp_x}
+cmp {center_x}
+beq +
+clc
+adc #$0010
+bra -
++;
+lda {copy_y}
+clc
+adc {height}
+sta {bottom_y}
+lda {width}
+lsr
+clc
+adc {prev_x}
+and #$fff0
+-;
+sta {temp_x}
+jsr slope_collision
+lda {temp_x}
+cmp {center_x}
+beq +
+clc
+adc #$0010
+bra -
++;
+lda {bottom_y}
+sec
+sbc {height}
+sta {copy_y}
+
+lda {right_x}
+eor {prev_right_x}
+and #$ff00
+beq +
+
+jsr calculate_wall_detector_height
+lda {copy_y}
+clc
+adc {temp2}
+sta {temp_y}
+jsr right_wall_collision
+lda {copy_y}
+clc
+adc {temp}
+sta {temp_y}
+jsr right_wall_collision
+lda {right_x}
+sec
+sbc {width}
+sta {copy_x}
++;
+rts
+
+//////////////////////////////////////////////
+
+left_collision:
+-;
+sta {temp_x}
+jsr ceiling_slope_collision
+lda {temp_x}
+cmp {center_x}
+beq +
+sec
+sbc #$0010
+bra -
++;
+lda {copy_y}
+clc
+adc {height}
+sta {bottom_y}
+lda {width}
+lsr
+clc
+adc {prev_x}
+and #$fff0
+-;
+sta {temp_x}
+jsr slope_collision
+lda {temp_x}
+cmp {center_x}
+beq +
+sec
+sbc #$0010
+bra -
++;
+lda {bottom_y}
+sec
+sbc {height}
+sta {copy_y}
+
+lda {copy_x}
+eor {prev_x}
+and #$ff00
+beq +
+
+jsr calculate_wall_detector_height
+lda {copy_y}
+clc
+adc {temp2}
+sta {temp_y}
+jsr left_wall_collision
+lda {copy_y}
+clc
+adc {temp}
+sta {temp_y}
+jsr left_wall_collision
++;
+rts
+
+left_wall_collision:
+get_tile_info({copy_x},{temp_y})
+and #$0008
+beq +
+tsb {collision_flags}
+lda {copy_x}
+ora #$00ff
+inc
+sta {copy_x}
++;
+rts
+
+right_wall_collision:
+get_tile_info({right_x},{temp_y})
+and #$0004
+beq +
+tsb {collision_flags}
+lda {right_x}
+and #$ff00
+dec
+sta {right_x}
++;
+rts
+
+slope_collision:
+get_tile_info({temp_x},{bottom_y})
+and #$0001
+beq +
+lda {temp_x}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tax
+lda {bottom_y}
+and #$ff00
+clc
+adc $0000,x
+cmp {prev_bottom_y}
+bcc +
+cmp {bottom_y}
+bcs +
+dec
+sta {bottom_y}
+lda #$0001
+tsb {collision_flags}
++;
+lda {bottom_y}
+and #$fff0
+sec
+sbc #$0010
+sta {prev_bottom_y}
+rts
+
+ceiling_slope_collision:
+get_tile_info({temp_x},{copy_y})
+and #$0002
+beq +
+lda {temp_x}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tax
+lda {copy_y}
+and #$ff00
+clc
+adc $0020,x
+cmp {copy_y}
+bcc +
+dec
+cmp {prev_y}
+bcs +
+adc #$0002
+sta {copy_y}
+lda #$0002
+tsb {collision_flags}
++;
+lda {copy_y}
+and #$fff0
+clc
+adc #$0010
+sta {prev_y}
+rts
+
+calculate_wall_detector_height:
+get_tile_info({center_x},{bottom_y})
+and #$0001
+beq +
+lda {center_x}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tax
+lda {bottom_y}
+and #$ff00
+clc
+adc $0000,x
+cmp {bottom_y}
+bcc +
+lda {width}
+lsr
+sta {temp}
+lda {height}
+sec
+sbc {temp}
+sta {temp}
+bra ++
++;
+lda {height}
+sta {temp}
++;
+
+get_tile_info({center_x},{copy_y})
+and #$0002
+beq +
+lda {center_x}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tax
+lda {copy_y}
+and #$ff00
+clc
+adc $0020,x
+cmp {copy_y}
+bcs +
+lda {width}
+lsr
+sta {temp2}
+rts
++;
+stz {temp2}
+rts

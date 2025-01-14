@@ -1,0 +1,158 @@
+include "collision data.txt"
+
+tile_collision:
+txy
+stz {collision_flags}
+jsr horizontal_collision
+jsr vertical_collision
+tyx
+lda {collision_flags}
+sta {collision},x
+beq +
+lda {copy_x}
+sta {x_pos},x
+lda {copy_y}
+sta {y_pos},x
++
+rts
+
+//////////////////////////////////////////////////////////////////////
+
+macro check_wall(x,y,a,label) {
+lda.b {y}+1
+xba
+lda.b {x}+1
+asl #2
+tax
+lda {collision_map},x
+and #{a}
+bne {label}
+}
+
+macro cross_tile_boundaries(a) {
+eor {a}
+and #$ff00
+beq +
+sep #$20
+}
+
+macro horizontal_collision(x,a,label) {
+cross_tile_boundaries({x})
+check_wall({x},{prev_y},{a},{label})
+lda.b {bottom_y}+1
+xba
+txa
+tax
+lda {collision_map},x
+and #{a}
+bne {label}
+rep #$20
++;
+rts
+}
+
+macro vertical_collision(y,a,label) {
+cross_tile_boundaries({y})
+check_wall({copy_x},{y},{a},{label})
+lda.b {right_x}+1
+asl #2
+tax
+lda {collision_map},x
+and #{a}
+bne {label}
+rep #$20
++;
+rts
+}
+
+//////////////////////////////////////////////////////////////////////
+
+horizontal_collision:
+lda {prev_y}
+clc
+adc {height}
+sta {bottom_y}
+lda {x_pos},y
+sta {copy_x}
+cmp {prev_x}
+bmi left_collision
+right_collision:
+clc			//must expect x input
+adc {width}
+sta {right_x}
+lda {prev_x}
+clc
+adc {width}
+sta {prev_right_x}
+horizontal_collision({right_x},$04,hit_right_wall)
+
+hit_right_wall:
+tsb {collision_flags}
+rep #$20
+lda {prev_right_x}
+ora #$00ff
+sta {right_x}
+sec
+sbc {width}
+sta {copy_x}
+rts
+
+////////////////////////////////////////////////////////////////////////////////
+
+left_collision:
+lda {prev_x}
+horizontal_collision({copy_x},$08,hit_left_wall)
+
+hit_left_wall:
+tsb {collision_flags}
+rep #$20
+lda {prev_x}
+and #$ff00
+sta {copy_x}
+rts
+
+//////////////////////////////////////////////////
+
+vertical_collision:
+lda {copy_x}
+clc
+adc {width}
+sta {right_x}
+lda {y_pos},y
+sta {copy_y}
+cmp {prev_y}
+bmi up_collision
+down_collision:
+clc
+adc {height}
+sta {bottom_y}
+lda {prev_y}
+clc
+adc {height}
+sta {prev_bottom_y}
+vertical_collision({bottom_y},$01,hit_floor)
+
+hit_floor:
+tsb {collision_flags}
+rep #$20
+lda {prev_bottom_y}
+ora #$00ff
+sta {bottom_y}
+sec
+sbc {height}
+sta {copy_y}
+rts
+
+////////////////////////////////////////////////////////////////////////////
+
+up_collision:
+lda {prev_y}
+vertical_collision({copy_y},$02,hit_ceiling)
+
+hit_ceiling:
+tsb {collision_flags}
+rep #$20
+lda {prev_y}
+and #$ff00
+sta {copy_y}
+rts
