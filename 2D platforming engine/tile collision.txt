@@ -300,7 +300,6 @@ sta {prev_center_x}
 clc
 adc {half_width}
 sta {prev_right_x}
-
 lda {prev_y}
 cmp {copy_y}
 bcc down_collision
@@ -326,14 +325,11 @@ jmp horizontal_collision
 down_collision:
 adc {height}
 sta {prev_bottom_y}
-
 lda {copy_y}
 clc
 adc {height}
 sta {bottom_y}
-
-lda {prev_bottom_y}
-eor {bottom_y}
+eor {prev_bottom_y}
 and #$ff00
 beq no_floor_collision
 get_tile_info({prev_center_x},{bottom_y})
