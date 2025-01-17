@@ -1,0 +1,664 @@
+macro bg_collision(a) {
+sep #$20
+lda.b {a}+1
+asl #2
+rep #$20
+tax
+lda {collision_map},x
+}
+
+// bit 0 flat floor
+// bit 1 flat ceiling
+// bit 2 right wall
+// bit 3 left wall
+// bit 4 bottom left slope
+// bit 5 bottom right slope
+// bit 6 top left slope
+// bit 7 top right slope
+// bit 8 top left corner
+// bit 9 top right corner
+// bit 10 bottom left corner
+// bit 11 bottom right corner
+
+collision_data:
+dw $0000,$000f,$0001,$0002,$0004,$0008,$0916,$062a,$0645,$0989,$0010,$0020,$0040,$0080,$0116,$0812
+dw $0422,$022a,$0445,$0241,$0181,$0889,$0114,$0816,$0228,$042a,$0245,$0444,$0189,$0888,$0010,$0010
+dw $0020,$0020,$0040,$0040,$0080,$0080,$0010,$0010,$0020,$0020,$0040,$0040,$0080,$0080
+
+slope_data:
+dw $0000,$0000,$0000,$0000,$0000,$0000,bottom_left,bottom_right,top_left,top_right,bottom_left,bottom_right
+dw top_left,top_right,bottom_left_gradual_1,bottom_left_gradual_2,bottom_right_gradual_1,bottom_right_gradual_2
+dw top_left_gradual_1,top_left_gradual_2,top_right_gradual_1,top_right_gradual_2,bottom_left_steep_1,bottom_left_steep_2
+dw bottom_right_steep_1,bottom_right_steep_2,top_left_steep_1,top_left_steep_2,top_right_steep_1,top_right_steep_2
+dw bottom_left_gradual_1,bottom_left_gradual_2,bottom_right_gradual_1,bottom_right_gradual_2,top_left_gradual_1
+dw top_left_gradual_2,top_right_gradual_1,top_right_gradual_2,bottom_left_steep_1,bottom_left_steep_2
+dw bottom_right_steep_1,bottom_right_steep_2,top_left_steep_1,top_left_steep_2,top_right_steep_1,top_right_steep_2
+
+bottom_left:
+dw $0010,$0020,$0030,$0040,$0050,$0060,$0070,$0080,$0090,$00a0,$00b0,$00c0,$00d0,$00e0,$00f0,$0100
+dw $0000,$0010,$0020,$0030,$0040,$0050,$0060,$0070,$0080,$0090,$00a0,$00b0,$00c0,$00d0,$00e0,$00f0
+bottom_right:
+dw $00f0,$00e0,$00d0,$00c0,$00b0,$00a0,$0090,$0080,$0070,$0060,$0050,$0040,$0030,$0020,$0010,$0000
+dw $00f0,$00e0,$00d0,$00c0,$00b0,$00a0,$0090,$0080,$0070,$0060,$0050,$0040,$0030,$0020,$0010,$0000
+top_left:
+dw $0100,$00f0,$00e0,$00d0,$00c0,$00b0,$00a0,$0090,$0080,$0070,$0060,$0050,$0040,$0030,$0020,$0010
+dw $0100,$00f0,$00e0,$00d0,$00c0,$00b0,$00a0,$0090,$0080,$0070,$0060,$0050,$0040,$0030,$0020,$0010
+top_right:
+dw $0000,$0010,$0020,$0030,$0040,$0050,$0060,$0070,$0080,$0090,$00a0,$00b0,$00c0,$00d0,$00e0,$00f0
+dw $0010,$0020,$0030,$0040,$0050,$0060,$0070,$0080,$0090,$00a0,$00b0,$00c0,$00d0,$00e0,$00f0,$0100
+bottom_left_gradual_1:
+dw $0020,$0040,$0060,$0080,$00a0,$00c0,$00e0,$0100,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+dw $0000,$0000,$0010,$0010,$0020,$0020,$0030,$0030,$0040,$0040,$0050,$0050,$0060,$0060,$0070,$0070
+bottom_left_gradual_2:
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$0020,$0040,$0060,$0080,$00a0,$00c0,$00e0,$0100
+dw $0080,$0080,$0090,$0090,$00a0,$00a0,$00b0,$00b0,$00c0,$00c0,$00d0,$00d0,$00e0,$00e0,$00f0,$00f0
+bottom_right_gradual_1:
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$00e0,$00c0,$00a0,$0080,$0060,$0040,$0020,$0000
+dw $00f0,$00f0,$00e0,$00e0,$00d0,$00d0,$00c0,$00c0,$00b0,$00b0,$00a0,$00a0,$0090,$0090,$0080,$0080
+bottom_right_gradual_2:
+dw $00e0,$00c0,$00a0,$0080,$0060,$0040,$0020,$0000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+dw $0070,$0070,$0060,$0060,$0050,$0050,$0040,$0040,$0030,$0030,$0020,$0020,$0010,$0010,$0000,$0000
+top_left_gradual_1:
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$0100,$00e0,$00c0,$00a0,$0080,$0060,$0040,$0020
+dw $0100,$0100,$00f0,$00f0,$00e0,$00e0,$00d0,$00d0,$00c0,$00c0,$00b0,$00b0,$00a0,$00a0,$0090,$0090
+top_left_gradual_2:
+dw $0100,$00e0,$00c0,$00a0,$0080,$0060,$0040,$0020,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+dw $0080,$0080,$0070,$0070,$0060,$0060,$0050,$0050,$0040,$0040,$0030,$0030,$0020,$0020,$0010,$0010
+top_right_gradual_1:
+dw $0000,$0020,$0040,$0060,$0080,$00a0,$00c0,$00e0,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+dw $0010,$0010,$0020,$0020,$0030,$0030,$0040,$0040,$0050,$0050,$0060,$0060,$0070,$0070,$0080,$0080
+top_right_gradual_2:
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$0000,$0020,$0040,$0060,$0080,$00a0,$00c0,$00e0
+dw $0090,$0090,$00a0,$00a0,$00b0,$00b0,$00c0,$00c0,$00d0,$00d0,$00e0,$00e0,$00f0,$00f0,$0100,$0100
+bottom_left_steep_1:
+dw $0010,$0010,$0020,$0020,$0030,$0030,$0040,$0040,$0050,$0050,$0060,$0060,$0070,$0070,$0080,$0080
+dw $0000,$0020,$0040,$0060,$0080,$00a0,$00c0,$00e0,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+bottom_left_steep_2:
+dw $0090,$0090,$00a0,$00a0,$00b0,$00b0,$00c0,$00c0,$00d0,$00d0,$00e0,$00e0,$00f0,$00f0,$0100,$0100
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$0000,$0020,$0040,$0060,$0080,$00a0,$00c0,$00e0
+bottom_right_steep_1:
+dw $00f0,$00f0,$00e0,$00e0,$00d0,$00d0,$00c0,$00c0,$00b0,$00b0,$00a0,$00a0,$0090,$0090,$0080,$0080
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$00e0,$00c0,$00a0,$0080,$0060,$0040,$0020,$0000
+bottom_right_steep_2:
+dw $0070,$0070,$0060,$0060,$0050,$0050,$0040,$0040,$0030,$0030,$0020,$0020,$0010,$0010,$0000,$0000
+dw $00e0,$00c0,$00a0,$0080,$0060,$0040,$0020,$0000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+top_left_steep_1:
+dw $0100,$0100,$00f0,$00f0,$00e0,$00e0,$00d0,$00d0,$00c0,$00c0,$00b0,$00b0,$00a0,$00a0,$0090,$0090
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$0100,$00e0,$00c0,$00a0,$0080,$0060,$0040,$0020
+top_left_steep_2:
+dw $0080,$0080,$0070,$0070,$0060,$0060,$0050,$0050,$0040,$0040,$0030,$0030,$0020,$0020,$0010,$0010
+dw $0100,$00e0,$00c0,$00a0,$0080,$0060,$0040,$0020,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+top_right_steep_1:
+dw $0000,$0000,$0010,$0010,$0020,$0020,$0030,$0030,$0040,$0040,$0050,$0050,$0060,$0060,$0070,$0070
+dw $0020,$0040,$0060,$0080,$00a0,$00c0,$00e0,$0100,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000
+top_right_steep_2:
+dw $0080,$0080,$0090,$0090,$00a0,$00a0,$00b0,$00b0,$00c0,$00c0,$00d0,$00d0,$00e0,$00e0,$00f0,$00f0
+dw $8000,$8000,$8000,$8000,$8000,$8000,$8000,$8000,$0020,$0040,$0060,$0080,$00a0,$00c0,$00e0,$0100
+
+//collision types
+//0: horizontal collision
+//1: gravity down
+//2: gravity up
+//3: gravity right
+//4: gravity left
+
+tile_collision:
+stz {collision_flags_2}
+stx {temp3}
+lda {y_pos},x
+sta {copy_y2}
+lda {x_pos},x
+sta {copy_x2}
+lda {collision_type}
+beq regular_tile_collision
+dec
+bne +
+lda {collision},x
+bit #$0031
+beq mostly_horizontal
+lda {copy_y2}
+pha
+clc
+adc #$0040
+bra ++
++;
+dec
+bne horizontal_gravity
+lda {collision},x
+bit #$00c2
+beq mostly_horizontal
+lda {copy_y2}
+pha
+sec
+sbc #$0040
++;
+sta {copy_y2}
+jsr mostly_horizontal
+ply
+lda {collision},x
+bit #$00f3
+bne +
+tya
+sta {y_pos},x
++;
+rts
+
+regular_tile_collision:
+stz {collision_flags}
+lda {prev_y}
+jsr horizontal_collision
+bra do_vertical_collision
+
+mostly_horizontal:
+lda {prev_y}
+-;
+stz {collision_flags}
+jsr horizontal_collision
+lda {collision_flags}
+bit #$0030
+beq +
+and #$0030
+tsb {collision_flags_2}
+lda {copy_y}
+sec
+sbc #$0010
+bra -
++;
+and #$00c0
+beq +
+tsb {collision_flags_2}
+lda {copy_y}
+clc
+adc #$0010
+bra -
++;
+lda {copy_y}
+sta {prev_y}
+do_vertical_collision:
+lda {copy_x}
+sta {prev_x}
+jsr vertical_collision
+bra return_from_collision_routine
+
+horizontal_gravity:
+dec
+bne +
+lda {collision},x
+bit #$0054
+beq mostly_vertical
+lda {copy_x2}
+pha
+clc
+adc #$0040
+bra ++
++;
+lda {collision},x
+bit #$00a8
+beq mostly_vertical
+lda {copy_x2}
+pha
+sec
+sbc #$0040
++;
+sta {copy_x2}
+jsr mostly_vertical
+ply
+lda {collision},x
+bit #$00fc
+bne +
+tya
+sta {x_pos},x
++;
+rts
+
+mostly_vertical:
+lda {prev_x}
+-;
+stz {collision_flags}
+jsr vertical_collision
+lda {collision_flags}
+bit #$00a0
+beq +
+and #$00a0
+tsb {collision_flags_2}
+lda {copy_x}
+sec
+sbc #$0010
+bra -
++;
+and #$0050
+beq +
+tsb {collision_flags_2}
+lda {copy_x}
+clc
+adc #$0010
+bra -
++;
+lda {copy_x}
+sta {prev_x}
+lda {copy_y}
+sta {prev_y}
+jsr horizontal_collision
+return_from_collision_routine:
+ldx {temp3}
+lda {copy_x}
+sta {x_pos},x
+lda {copy_y}
+sta {y_pos},x
+lda {collision_flags}
+ora {collision_flags_2}
+sta {collision},x
+rts
+
+//////////////////////////////////////////////////////////////////////
+
+macro check_wall_3(x1,x2,x3,label_3,label_4,label_5,bits,a,b,c) {
+bit {bits}+{a}
+beq {label_3}
+bit {bits}
+bne {label_4}
+bit {b}
+bne {label_5}
+bit {c}
+beq +
+lda {x1}
+and #$ff00
+bra ++
++;
+lda {x1}
+ora #$00ff
+inc
++;
+cmp {x2}
+bcc {label_3}
+cmp {x3}
+beq {label_5}
+bcs {label_3}
+}
+macro hit_floor_slope() {
+dec
+sta {to_y}
+sbc {height}
+sta {copy_y}
+lda {collision_map},x
+and #$00f0
+tsb {collision_flags}
+}
+macro hit_floor() {
+lda #$0001
+tsb {collision_flags}
+lda {from_y}
+ora #$00ff
+sta {to_y}
+sec
+sbc {height}
+sta {copy_y}
+}
+macro check_floor_slope(x) {
+lda {x}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tay
+lda $0020,y
+bmi ++
+lda {to_y}
+and #$ff00
+clc
+adc $0020,y
+cmp {to_y}
+beq +
+bcs ++
++;
+cmp {from_y}
+bcc +
+}
+macro check_horizontal_wall(x,y1,y2,bits,label) {
+lda {x}
+sep #$20
+lda.b {y1}+1
+xba
+asl #2
+rep #$20
+tax
+lda {collision_map},x
+bit {bits}
+beq {label}
+lda {x}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tay
+lda $0020,y
+bmi {label}
+lda {y1}
+and #$ff00
+clc
+adc $0020,y
+cmp {y2}
+}
+macro check_horizontal_wall_2(x,y1,y2,label,label_3,label_4,label_5,bits,a,b,c) {
+lda {y1}
+eor {y2}
+and #$ff00
+beq {label}
+lda {y1}
+sep #$20
+txa
+rep #$20
+tax
+lda {collision_map},x
+check_wall_3({x},{copy_x},{right_x},{label_3},{label_4},{label_5},{bits},{a},{b},{c})
+}
+macro check_floor(x,bits,label_1,label_2,label_3,label_4,label_5) {
+check_horizontal_wall({x},{from_y},{to_y},{bits},++)
+beq +
+bcs {label_1}
++;
+cmp {from_y}
+bcs {label_2}
++;
+check_horizontal_wall_2({x},{to_y},{from_y},{label_1},{label_3},{label_4},{label_5},{bits},$0301,#$0001,#$0100)
+}
+
+vertical_collision:
+sta {copy_x}		//must expect x input
+clc
+adc {width}
+sta {right_x}
+lda {copy_y2}
+sta {copy_y}
+cmp {prev_y}
+bne +
+rts
++;
+bpl down_collision
+jmp up_collision
+down_collision:
+clc
+adc {height}
+sta {to_y}
+lda {prev_y}
+clc
+adc {height}
+sta {from_y}
+check_floor({copy_x},#$0010,exit_floor_routine,hit_floor_slope,check_floor_2,check_floor_slope,hit_floor)
+hit_floor:
+hit_floor()
+exit_floor_routine:
+bra check_floor_2
+check_floor_slope:
+check_floor_slope({copy_x})
+hit_floor_slope:
+hit_floor_slope()
++;
+check_floor_2:
+check_floor({right_x},#$0020,exit_floor_routine_2,hit_floor_slope_2,exit_floor_routine_2,check_floor_slope_2,hit_floor_2)
+hit_floor_2:
+hit_floor()
+exit_floor_routine_2:
+rts
+check_floor_slope_2:
+check_floor_slope({right_x})
+hit_floor_slope_2:
+hit_floor_slope()
++;
+rts
+
+////////////////////////////////////////////////////////////////////////////
+
+macro hit_ceiling_slope() {
+sta {copy_y}
+lda {collision_map},x
+and #$00f0
+tsb {collision_flags}
+}
+macro hit_ceiling() {
+lda #$0002
+tsb {collision_flags}
+lda {prev_y}
+and #$ff00
+sta {copy_y}
+}
+macro check_ceiling_slope(x) {
+lda {x}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tay
+lda $0020,y
+bmi ++
+lda {copy_y}
+and #$ff00
+clc
+adc $0020,y
+cmp {copy_y}
+bcc ++
+cmp {prev_y}
+beq +
+bcs ++
++;
+}
+macro check_ceiling(x,bits,label_1,label_2,label_3,label_4,label_5) {
+check_horizontal_wall({x},{prev_y},{copy_y},{bits},+)
+bcc {label_1}
+cmp {prev_y}
+beq {label_2}
+bcc {label_2}
++;
+check_horizontal_wall_2({x},{copy_y},{prev_y},{label_3},{label_3},{label_4},{label_5},{bits},$0c02,#$0002,#$0400)
+}
+
+up_collision:
+check_ceiling({copy_x},#$0040,exit_ceiling_routine,hit_ceiling_slope,check_ceiling_2,check_ceiling_slope,hit_ceiling)
+hit_ceiling:
+hit_ceiling()
+exit_ceiling_routine:
+bra check_ceiling_2
+check_ceiling_slope:
+check_ceiling_slope({copy_x})
+hit_ceiling_slope:
+hit_ceiling_slope()
++;
+check_ceiling_2:
+check_ceiling({right_x},#$0080,exit_ceiling_routine_2,hit_ceiling_slope_2,exit_ceiling_routine_2,check_ceiling_slope_2,hit_ceiling_2)
+hit_ceiling_2:
+hit_ceiling()
+exit_ceiling_routine_2:
+rts
+check_ceiling_slope_2:
+check_ceiling_slope({right_x})
+hit_ceiling_slope_2:
+hit_ceiling_slope()
++;
+rts
+
+//////////////////////////////////////////////////////////////////////
+
+macro hit_right_slope() {
+dec
+sta {to_x}
+sbc {width}
+sta {copy_x}
+lda {collision_map},x
+and #$00f0
+tsb {collision_flags}
+}
+macro hit_right_wall() {
+lda #$0004
+tsb {collision_flags}
+lda {from_x}
+ora #$00ff
+sta {to_x}
+sec
+sbc {width}
+sta {copy_x}
+}
+macro check_right_slope(y) {
+lda {y}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tay
+lda $0000,y
+bmi ++
+lda {to_x}
+and #$ff00
+clc
+adc $0000,y
+cmp {to_x}
+beq +
+bcs ++
++;
+cmp {from_x}
+bcc +
+}
+macro check_wall(y,x1,x2,bits,label) {
+lda {y}
+bg_collision({x1})
+bit {bits}
+beq {label}
+lda {y}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tay
+lda $0000,y
+bmi {label}
+lda {x1}
+and #$ff00
+clc
+adc $0000,y
+cmp {x2}
+}
+macro check_wall_2(y,x1,x2,label,label_3,label_4,label_5,bits,a,b,c) {
+lda {x1}
+eor {x2}
+and #$ff00
+beq {label}
+txa
+bg_collision({x1})
+check_wall_3({y},{copy_y},{bottom_y},{label_3},{label_4},{label_5},{bits},{a},{b},{c})
+}
+macro check_right_wall(y,bits,label_1,label_2,label_3,label_4,label_5) {
+check_wall({y},{from_x},{to_x},{bits},++)
+beq +
+bcs {label_1}
++;
+cmp {from_x}
+bcs {label_2}
++;
+check_wall_2({y},{to_x},{from_x},{label_1},{label_3},{label_4},{label_5},{bits},$0504,#$0004,#$0100)
+}
+
+horizontal_collision:
+sta {copy_y}		//must expect y input
+clc
+adc {height}
+sta {bottom_y}
+lda {copy_x2}
+sta {copy_x}
+cmp {prev_x}
+bne +
+rts
++;
+bpl right_collision
+jmp left_collision
+right_collision:
+clc			//must expect x input
+adc {width}
+sta {to_x}
+lda {prev_x}
+clc
+adc {width}
+sta {from_x}
+check_right_wall({copy_y},#$0080,exit_right_wall_routine,hit_right_slope,check_right_wall_2,check_right_slope,hit_right_wall)
+hit_right_wall:
+hit_right_wall()
+exit_right_wall_routine:
+bra check_right_wall_2
+check_right_slope:
+check_right_slope({copy_y})
+hit_right_slope:
+hit_right_slope()
++;
+check_right_wall_2:
+check_right_wall({bottom_y},#$0020,exit_right_wall_routine_2,hit_right_slope_2,exit_right_wall_routine_2,check_right_slope_2,hit_right_wall_2)
+hit_right_wall_2:
+hit_right_wall()
+exit_right_wall_routine_2:
+rts
+check_right_slope_2:
+check_right_slope({bottom_y})
+hit_right_slope_2:
+hit_right_slope()
++;
+rts
+
+////////////////////////////////////////////////////////////////////////////////
+
+macro hit_left_wall() {
+lda #$0008
+tsb {collision_flags}
+lda {prev_x}
+and #$ff00
+sta {copy_x}
+}
+macro hit_left_slope() {
+sta {copy_x}
+lda {collision_map},x
+and #$00f0
+tsb {collision_flags}
+}
+macro check_left_slope(y) {
+lda {y}
+and #$00f0
+lsr #3
+adc {slope_map},x
+tay
+lda $0000,y
+bmi ++
+lda {copy_x}
+and #$ff00
+clc
+adc $0000,y
+cmp {copy_x}
+bcc ++
+cmp {prev_x}
+beq +
+bcs ++
++;
+}
+macro check_left_wall(y,bits,label_1,label_2,label_3,label_4,label_5) {
+check_wall({y},{prev_x},{copy_x},{bits},+)
+bcc {label_1}
+cmp {prev_x}
+beq {label_2}
+bcc {label_2}
++;
+check_wall_2({y},{copy_x},{prev_x},{label_3},{label_3},{label_4},{label_5},{bits},$0a08,#$0008,#$0200)
+}
+
+left_collision:
+check_left_wall({copy_y},#$0040,exit_left_wall_routine,hit_left_slope,check_left_wall_2,check_left_slope,hit_left_wall)
+hit_left_wall:
+hit_left_wall()
+exit_left_wall_routine:
+bra check_left_wall_2
+check_left_slope:
+check_left_slope({copy_y})
+hit_left_slope:
+hit_left_slope()
++;
+check_left_wall_2:
+check_left_wall({bottom_y},#$0010,exit_left_wall_routine_2,hit_left_slope_2,exit_left_wall_routine_2,check_left_slope_2,hit_left_wall_2)
+hit_left_wall_2:
+hit_left_wall()
+exit_left_wall_routine_2:
+rts
+check_left_slope_2:
+check_left_slope({bottom_y})
+hit_left_slope_2:
+hit_left_slope()
++;
+rts
