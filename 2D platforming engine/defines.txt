@@ -34,7 +34,7 @@ define center_x($40)
 define prev_center_x($42)
 define tile_x($44)
 define tile_y($46)
-define floor_height($48)
+define half_width($48)
 
 
 define hioam($00e0)

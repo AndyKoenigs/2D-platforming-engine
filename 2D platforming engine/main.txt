@@ -57,18 +57,18 @@ object_handler:
 ldx #$0000
 -;
 lda {object_id},x
-beq +
-jmp ({object_id},x)
-+;
+bne +
 end:
 inx #2
 cpx #$0100
 bne -
 rts
-
++;
+jmp ({object_id},x)
 
 
 ball:
+sep #$10
 lda {x_pos_lo},x
 clc
 adc {x_vel_lo},x
@@ -85,10 +85,11 @@ lda {y_pos},x
 sta {prev_y}
 adc {y_vel},x
 sta {y_pos},x
-
+rep #$10
 jsr tile_collision
 
 lda {collision},x
+beq ++
 bit #$00f3
 beq +
 stz {y_pos_lo},x
@@ -141,7 +142,7 @@ sta {width}
 lda #$0080
 sta {height}
 ldy #$0000
-lda #$0004
+lda #$0008
 sta {angle}
 lda #$0001
 sta {amplitude}
@@ -155,10 +156,10 @@ sta {y_pos},y
 jsr angle_to_velocity
 lda {angle}
 clc
-adc #$0008
+adc #$0010
 sta {angle}
 iny #2
-cpy #$0068
+cpy #$0080
 bne -
 rts
 
@@ -179,10 +180,7 @@ lda #$0680
 sta {y_pos}
 rts
 
-
 define gravity($0004)
-
-
 
 top_down_player:
 lda {x_pos},x
@@ -225,8 +223,6 @@ jsr tile_collision
 jsr camera
 jsr draw_sprite
 jmp end
-
-
 
 player:
 lda {x_pos},x
