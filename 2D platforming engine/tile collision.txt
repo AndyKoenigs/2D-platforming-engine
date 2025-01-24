@@ -10,24 +10,6 @@ tax
 lda {collision_map},x
 }
 
-macro floor_collision(x,bits) {
-txa
-sep #$20
-lda.b {x}+1
-asl #2
-rep #$20
-tax
-lda {collision_map},x
-and {bits}
-beq +
-tsb {collision_flags}
-lda {bottom_y}
-and #$ff00
-dec
-sta {bottom_y}
-+;
-}
-
 macro ceiling_collision(x,bits) {
 txa
 sep #$20
@@ -47,9 +29,9 @@ sta {copy_y}
 }
 
 macro ceiling_slope_collision(inc,bits) {
-sta {temp_x}
-get_tile_info({temp_x},{copy_y})
-and #$0002
+sta {temp_x}					//first it detects slopes going vertically
+get_tile_info({temp_x},{copy_y})		//ceiling slopes are detected only when going from
+and #$0002					//under the ceiling slope, to above ceiling slope
 beq +
 lda {temp_x}
 and #$00f0
@@ -74,9 +56,9 @@ lda {temp_x}
 cmp {center_x}
 beq ++
 -;
-clc
-adc #{inc}
-sta {temp_x}
+clc					//then detects slopes going horizontally
+adc #{inc}				//it loops through every pixel when going horizontally
+sta {temp_x}				//until it hits a slope height of the same whole pixel y value
 get_tile_info({temp_x},{copy_y})
 bit #{bits}
 beq +
@@ -111,10 +93,28 @@ bne -
 +;
 }
 
-macro slope_collision(inc,bits) {
-sta {temp_x}
-get_tile_info({temp_x},{bottom_y})
-and #$0001
+macro floor_collision(x,bits) {
+txa
+sep #$20
+lda.b {x}+1
+asl #2
+rep #$20
+tax
+lda {collision_map},x
+and {bits}
+beq +
+tsb {collision_flags}
+lda {bottom_y}
+and #$ff00
+dec
+sta {bottom_y}
++;
+}
+
+macro floor_slope_collision(inc,bits) {
+sta {temp_x}					//first it detects slopes going vertically
+get_tile_info({temp_x},{bottom_y})		//slopes are detected only when going from
+and #$0001					//over a slope, to under a slope
 beq +
 lda {temp_x}
 and #$00f0
@@ -138,8 +138,8 @@ lda {temp_x}
 cmp {center_x}
 beq ++
 -;
-clc
-adc #{inc}
+clc					//now detect slopes horizontally
+adc #{inc}				//same rules apply as ceiling slopes
 sta {temp_x}
 get_tile_info({temp_x},{bottom_y})
 bit #{bits}
@@ -176,9 +176,9 @@ bne -
 
 macro calculate_wall_detector_height() {
 get_tile_info({center_x},{bottom_y})
-and #$0001
-beq +
-lda {center_x}
+and #$0001					//if on a slope or above a slope within a slope tile
+beq +						//move bottom-wall detector up by half width amount
+lda {center_x}					//to avoid colliding with walls while walking up slopes
 and #$00f0
 lsr #3
 adc {slope_map},x
@@ -198,7 +198,7 @@ lda {height}
 clc
 adc {copy_y}
 sta {temp}
-get_tile_info({center_x},{copy_y})
+get_tile_info({center_x},{copy_y})		//now do the same for the top-wall detector
 and #$0002
 beq +
 lda {center_x}
@@ -269,7 +269,7 @@ beq +
 lda {collision_type}
 cmp #$0001
 bne +
-lda {copy_y}
+lda {copy_y}		//gravity pull down when walking down slope
 clc
 adc #$0080
 sta {copy_y}
@@ -280,7 +280,7 @@ beq +
 lda {collision_type}
 cmp #$0002
 bne +
-lda {copy_y}
+lda {copy_y}		//gravity pull up when walking upside down
 sec
 sbc #$0080
 sta {copy_y}
@@ -290,7 +290,7 @@ stz {collision_flags}
 
 /////////////////////////////////////////////////
 
-vertical_collision:
+vertical_collision:				//first check vertical collision
 lda {width}
 lsr
 sta {half_width}
@@ -302,15 +302,15 @@ adc {half_width}
 sta {prev_right_x}
 lda {prev_y}
 cmp {copy_y}
-bcc down_collision
+bcc down_collision				//if going down, jump to down collision routine
 eor {copy_y}
-and #$ff00
+and #$ff00					//only check if tile boundaries cross
 beq no_ceiling_collision
-get_tile_info({prev_center_x},{copy_y})
-and #$0002
+get_tile_info({prev_center_x},{copy_y})		//if center is on or below a ceiling slope within a ceiling slope tile
+and #$0002					//skip ceiling ledge detection
 bne no_ceiling_collision
-ceiling_collision({prev_x},#$0040)
-ceiling_collision({prev_right_x},#$0080)
+ceiling_collision({prev_x},#$0040)		//ceiling collision left
+ceiling_collision({prev_right_x},#$0080)	//ceiling collision right
 no_ceiling_collision:
 lda {copy_y}
 clc
@@ -323,7 +323,7 @@ sta {prev_bottom_y}
 jmp horizontal_collision
 
 down_collision:
-adc {height}
+adc {height}					//same rules as in ceiling color, but with floor collision
 sta {prev_bottom_y}
 lda {copy_y}
 clc
@@ -347,7 +347,7 @@ no_floor_collision:
 ////////////////////////////////
 
 horizontal_collision:
-lda {copy_x}
+lda {copy_x}				//now do horizontal collision
 clc
 adc {width}
 sta {right_x}
@@ -363,15 +363,15 @@ and #$fff0
 sta {temp}
 cmp {center_x}
 bcc right_collision
-jmp left_collision
+jmp left_collision			//if going left, jump to left collision routine
 right_collision:
-ceiling_slope_collision($0010,$0200)
+ceiling_slope_collision($0010,$0200)	//do ceiling slope collision
 lda {copy_y}
 clc
 adc {height}
 sta {bottom_y}
 lda {temp}
-slope_collision($0010,$0200)
+floor_slope_collision($0010,$0200)	//do floor slope collision
 lda {bottom_y}
 sec
 sbc {height}
@@ -380,10 +380,10 @@ lda {right_x}
 eor {prev_right_x}
 and #$ff00
 bne +
-jmp exit_collision
+jmp exit_collision			//exit collision if right side of sprite does not cross tile boundaries
 +;
-calculate_wall_detector_height()
-lda {temp2}
+calculate_wall_detector_height()	//this macro adjusts the top and bottom of the wall detectors
+lda {temp2}				//to avoid getting stuck by walls when moving up slopes
 right_wall_collision()
 lda {temp}
 right_wall_collision()
@@ -395,7 +395,7 @@ exit_collision:
 ldx {temp3}
 lda {collision_flags}
 sta {collision},x
-beq +
+beq +					//if no collision, skip saving coordinates
 lda {copy_x}
 sta {x_pos},x
 lda {copy_y}
@@ -406,13 +406,13 @@ rts
 //////////////////////////////////////////////
 
 left_collision:
-ceiling_slope_collision($fff0,$0100)
+ceiling_slope_collision($fff0,$0100)	//same rules apply as right collision
 lda {copy_y}
 clc
 adc {height}
 sta {bottom_y}
 lda {temp}
-slope_collision($fff0,$0100)
+floor_slope_collision($fff0,$0100)
 lda {bottom_y}
 sec
 sbc {height}
